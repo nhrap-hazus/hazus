@@ -10,7 +10,7 @@
     :author: James Raines; james.rainesii@fema.dhs.gov
 """
 
-__version__ = '0.0.7'
+__version__ = '0.0.8'
 __all__ = ['Tornado', 'Earthquake', 'Hurricane', 'Tsunami', 'Flood', 'legacy', 'common']
 
 from .earthquake import Earthquake

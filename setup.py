@@ -5,13 +5,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="hazus",
-    version="0.0.7",
+    version="0.0.8",
     author="James Raines",
-    author_email="jraines521@gmail.com",
+    author_email="james.rainesii@fema.dhs.gov",
     description="FEMA - Hazus Open-Source Library",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/nhrap-dev/hazus.git",
+    url="https://github.com/nhrap-hazus/hazus.git",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
