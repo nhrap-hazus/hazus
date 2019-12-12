@@ -1,0 +1,109 @@
+{% set name = "hazus" %}
+{% set version = "0.0.7" %}
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+
+source:
+  url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
+  sha256: 9e70b136b04082cf68b09004055b39f05238c5393bc019c54492fafefdb7f8c2
+
+build:
+  number: 0
+  script: "{{ PYTHON }} -m pip install . -vv"
+
+requirements:
+  host:
+    - pip
+    - python
+  run:
+    - python
+    - affine
+    - asn1crypto
+    - attrs
+    - bcrypt
+    - certifi
+    - cffi
+    - chardet
+    - Click
+    - click-plugins
+    - cligj
+    - cryptography
+    - cycler
+    - descartes
+    - Fiona
+    - GDAL
+    - geopandas
+    - idna
+    - jenkspy
+    - kiwisolver
+    - mapclassify
+    - matplotlib
+    - mkl_fft
+    - mkl_random
+    - mkl-service
+    - munch
+    - numpy
+    - olefile
+    - palettable
+    - pandas
+    - paramiko
+    - patsy
+    - pdfrw
+    - Pillow
+    - psycopg2
+    - pycparser
+    - PyNaCl
+    - pyodbc
+    - pyOpenSSL
+    - pyparsing
+    - PyPDF2
+    - pyproj
+    - pysal
+    - PySocks
+    - python-dateutil
+    - pytz
+    - rasterio
+    - reportlab
+    - requests
+    - Rtree
+    - scipy
+    - seaborn
+    - Shapely
+    - six
+    - snuggs
+    - SQLAlchemy
+    - statsmodels
+    - tornado
+    - urllib3
+    - utm
+    - win_inet_pton
+    - wincertstore
+
+test:
+  imports:
+    - hazus
+    - hazus.earthquake
+    - hazus.flood
+    - hazus.generic
+    - hazus.hurricane
+    - hazus.legacy
+    - hazus.legacy.exporting
+    - hazus.legacy.exporting.reports
+    - hazus.legacy.exporting.results
+    - hazus.tornado
+    - hazus.tsunami
+
+about:
+  home: "https://github.com/nhrap-dev/hazus.git"
+  license: MIT
+  license_family: MIT
+  license_file: 
+  summary: "FEMA - Hazus Open-Source Library"
+  doc_url: 
+  dev_url: 
+
+extra:
+  recipe-maintainers:
+    - lorax521
