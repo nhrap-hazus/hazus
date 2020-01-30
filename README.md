@@ -6,7 +6,7 @@ This Python Package is in its infancy and currently exists as a framework for de
 
 ## Official Documentation
 
-* [Hazus Python Package Documentation](https://fema-nhrap.s3.amazonaws.com/Hazus/Python/build/html/index.html)
+* [Hazus Python Package Documentation](https://fema-ftp-snapshot.s3.amazonaws.com/Hazus/hazpy/build/html/index.html)
 
 ## Licensing
 
