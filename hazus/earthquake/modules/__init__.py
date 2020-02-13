@@ -12,7 +12,7 @@
 
 __version__ = '0.0.1'
 __all__ = [
-    'AdvancedEngineeringBldgMode',
+    'AEBM',
     'DirectSocialLosses',
     'EssentialFacilities',
     'GeneralBuildings',
@@ -24,7 +24,7 @@ __all__ = [
     'UtilitySystems'
 ]
 
-from .advanced_engineering_bldg_mode import AdvancedEngineeringBldgMode
+from .AEBM import AEBM
 from .direct_social_losses import DirectSocialLosses
 from .essential_facilities import EssentialFacilities
 from .general_buildings import GeneralBuildings

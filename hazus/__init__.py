@@ -10,11 +10,11 @@
     :author: James Raines; james.rainesii@fema.dhs.gov
 """
 
-__version__ = '0.0.8'
-__all__ = ['Tornado', 'Earthquake', 'Hurricane', 'Tsunami', 'Flood', 'legacy', 'common']
+__version__ = '0.0.9'
+__all__ = ['Tornado', 'Earthquake', 'Hurricane', 'Tsunami', 'flood', 'legacy', 'common']
 
 from .earthquake import Earthquake
-from .flood import Flood
+from .flood import flood
 from .hurricane import Hurricane
 from .tornado import Tornado
 from .tsunami import Tsunami

@@ -1,5 +1,5 @@
 from ..common.classes import Base
-from .modules import AdvancedEngineeringBldgMode
+from .modules import AEBM
 from .modules import DirectSocialLosses
 from .modules import EssentialFacilities
 from .modules import GeneralBuildings
@@ -23,7 +23,7 @@ class Earthquake(Base):
 
 class Analysis():
     def __init__(self):
-        self.advancedEngineeringBldgMode = AdvancedEngineeringBldgMode()
+        self.AEBM = AEBM()
         self.directSocialLosses = DirectSocialLosses()
         self.essentialFacilities = EssentialFacilities()
         self.generalBuildings = GeneralBuildings()

@@ -18,7 +18,7 @@ __all__ = [
     'GeneralBuildingStock',
     'IndirectEconomicLoss',
     'TransportationSystems',
-    'UserDefinedStructures',
+    'UDF', #UKS - 1/14/2020 - RTC CR 34227
     'UtilitySystems',
     'Vehicles',
     'WhatIf'
@@ -30,7 +30,7 @@ from .essential_facilities import EssentialFacilities
 from .general_building_stock import GeneralBuildingStock
 from .indirect_economic_loss import IndirectEconomicLoss
 from .transportation_systems import TransportationSystems
-from .user_defined_structures import UserDefinedStructures
+from .UDF import UDF #UKS - 1/14/2020 - RTC CR 34227
 from .utility_systems import UtilitySystems
 from .vehicles import Vehicles
 from .what_if import WhatIf

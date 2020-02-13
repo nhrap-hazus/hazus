@@ -35,6 +35,11 @@ class HazusDB():
         self.databases = self.getDatabases()
     
     def createConnection(self):
+        """ Creates a connection object to the local Hazus SQL Server database
+
+            Returns:
+                conn: pyodbc connection
+        """
         comp_name = os.environ['COMPUTERNAME']
         conn = py.connect('Driver=ODBC Driver 11 for SQL Server;SERVER=' +
             comp_name + '\HAZUSPLUSSRVR; UID=SA;PWD=Gohazusplus_02')
@@ -42,17 +47,35 @@ class HazusDB():
         return conn
     
     def getDatabases(self):
+        """Creates a dataframe of all databases in your Hazus installation
+
+            Returns:
+                df: pandas dataframe
+        """
         query = 'SELECT name FROM sys.databases'
         df = pd.read_sql(query, self.conn)
         return df
     
     def getTables(self, databaseName):
+        """Creates a dataframe of all tables in a database
+
+            Keyword Arguments:
+                databaseName: str -- the name of the Hazus SQL Server database
+
+            Returns:
+                df: pandas dataframe
+        """
         query = 'SELECT * FROM [%s].INFORMATION_SCHEMA.TABLES;' % databaseName
         df = pd.read_sql(query, self.conn)
         self.tables = df
         return df
 
     def getStudyRegions(self):
+        """Creates a dataframe of all study regions in the local Hazus SQL Server database
+
+            Returns:
+                studyRegions: pandas dataframe
+        """
         exclusionRows = ['master', 'tempdb', 'model', 'msdb', 'syHazus', 'CDMS', 'flTmpDB']
         self.cursor.execute('SELECT [StateID] FROM [syHazus].[dbo].[syState]')   
         for state in self.cursor:
@@ -66,10 +89,26 @@ class HazusDB():
         return studyRegions
 
     def query(self, sql):
+        """Performs a SQL query on the Hazus SQL Server database
+
+            Keyword Arguments:
+                sql: str -- a T-SQL query
+
+            Returns:
+                df: pandas dataframe
+        """
         df = pd.read_sql(sql, self.conn)
         return df
 
     def getHazardBoundary(self, databaseName):
+        """Fetches the hazard boundary from a Hazus SQL Server database
+
+            Keyword Arguments:
+                databaseName: str -- the name of the database
+            
+            Returns:
+                df: pandas dataframe -- geometry in WKT
+        """
         query = 'SELECT Shape.STAsText() as geom from [%s].[dbo].[hzboundary]' % databaseName
         df = pd.read_sql(query, self.conn)
         return df

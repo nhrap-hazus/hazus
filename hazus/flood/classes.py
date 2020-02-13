@@ -5,12 +5,12 @@ from .modules import EssentialFacilities
 from .modules import GeneralBuildingStock
 from .modules import IndirectEconomicLoss
 from .modules import TransportationSystems
-from .modules import UserDefinedStructures
+from .modules import UDF
 from .modules import UtilitySystems
 from .modules import Vehicles
 from .modules import WhatIf
 
-class Flood(Base):
+class flood(Base):
     """
     Intialize a flood module instance
      
@@ -20,9 +20,9 @@ class Flood(Base):
     def __init__(self):
         super().__init__()
 
-        self.analysis = Analysis()
+        self.analysis = analysis()
 
-class Analysis():
+class analysis(): #like a second constructor for the flood class/inline class
     def __init__(self):
         
         self.agriculture = Agriculture()
@@ -31,7 +31,7 @@ class Analysis():
         self.generalBuildingStock = GeneralBuildingStock()
         self.indirectEconomicLoss = IndirectEconomicLoss()
         self.transportationSystems = TransportationSystems()
-        self.userDefinedStructures = UserDefinedStructures()
+        self.UDF = UDF() #UKS - 1/14/2020 - RTC CR 34227
         self.utilitySystems = UtilitySystems()
         self.vehicles = Vehicles()
         self.whatIf = WhatIf()

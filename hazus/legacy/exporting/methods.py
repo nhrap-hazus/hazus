@@ -35,13 +35,13 @@ def export(exportObj):
     
     Keyword arguments:
         exportObj: dictionary -- {
-            opt_csv: boolean -- export CSVs |
-            opt_shp: boolean -- export Shapefile(s) |
-            opt_report: boolean -- export report |
-            opt_json: boolean -- export Json |
-            study_region: str -- name of the Hazus study region (HPR name) |
-            ?title: str -- title on the report |
-            ?meta: str -- sub-title on the report (ex: Shakemap v5) |
+            opt_csv: boolean -- export CSVs,
+            opt_shp: boolean -- export Shapefile(s),
+            opt_report: boolean -- export report,
+            opt_json: boolean -- export Json,
+            study_region: str -- name of the Hazus study region (HPR name),
+            ?title: str -- title on the report,
+            ?meta: str -- sub-title on the report (ex: Shakemap v5),
             output_directory: str -- directory location for the outputs
         }
     """
