@@ -9,6 +9,9 @@
     :author(FAST Merge): Ujvala K Sharma (UKS) 
     :date:   1/14/2020
     :Task:   RTC CR 34227
+
+    :Update: 4/13/2020
+    :Task:   RTC CR 35520 - FAST Custom DDFs
 """
 
 import logging
@@ -31,13 +34,8 @@ class UDF():
         cwd = os.getcwd()
         if (cwd.find('Python_env')!= -1):
             cwd = os.path.dirname(cwd)
-        #cwd = os.path.dirname(cwd)
         outDir = os.path.dirname(spreadsheet)
-        #print(outDir)
-        argv = (spreadsheet,os.path.join(cwd,r"lookuptables"),outDir,[os.path.join(cwd,'rasters',grid) for grid in raster],"False",fmap)
-        
-        #print(argv)
-        #print(fmap)
+        argv = (spreadsheet,os.path.join(cwd,r"lookuptables"),outDir,[os.path.join(cwd,'rasters',grid) for grid in raster],"False",fmap)        
         objUDF = UDF()
         return objUDF.flood_damage(*argv)
     
@@ -54,14 +52,9 @@ class UDF():
         cdir = os.getcwd()
         if (cdir.find('Python_env')!= -1):
             cdir = os.path.dirname(cdir)
-        print(cdir)
+
         logDirName = "Log"
         logDir = os.path.join(cdir,logDirName)
-        print(logDir)
-
-        print(UDFOrig)
-        print(LUT_Dir)
-        print(ResultsDir)
 
         handler = logging.FileHandler(logDir + '\\' + 'app.log')
         handler.setLevel(logging.INFO)
@@ -72,257 +65,254 @@ class UDF():
         log = []#CBH
         logger.info('\n')
         logger.info('Calculation FL Building & Content Losses...')
+        counter = 0
         try:
             # Measure script performance
             start_time = time.time()
             QC_Warning = QC_Warning.lower() == 'true'
-
 
             #Get field names
             with open(UDFOrig, "r+") as f:
                 reader = csv.reader(f)
                 field_names = next(reader)
                 #f.close()
-            #########################################################################################################
-            # UDF Input Attributes. The following are standard Hazus names/capitalizations.
-            #########################################################################################################
-            UserDefinedFltyId,OccupancyClass,Cost,Area,NumStories,FoundationType,FirstFloorHt,ContentCost,BldgDamageFnID,ContDamageFnId,InvDamageFnId,InvCost,SOI,latitude,longitude,flC = fmap#[map for map in fmap if map != '' else]#[value if value != '' and any(value in s for s in field_names) == True else field for field, value in fmap]
-                    
-            # If your UDF Naming Convention differs from the Hazus namings,
-            # you can specify your names here, and override the assignments above
-            # Example: (of course, uncomment this)
-            # UserDefinedFltyId = "UDF_ID"
-
-            # Note that this script has no use for the following Hazus-MH Flood UDF variables:
-            #    Name, Address, City, Statea, Zipcode, Contact, PhoneNumber, YearBuilt, BackupPower,
-            #    ShelterCapacity, Latitude, Longitude, Comment, BldgType, DesignLevel, FloodProtection
-
-            #########################################################################################################
-            #  UDF Output Attributes
-            #########################################################################################################
-            # Good programming practice: have these names as variables rather than hardcoded within commands
-            # Most users need not change these, unless you do not like the names
-            BldgDmgPct                = "BldgDmgPct"
-            BldgLossUSD                = "BldgLossUSD"
-            ContentCostUSD            = "ContentCostUSD"
-            ContDmgPct                = "ContDmgPct"
-            ContentLossUSD            = "ContentLossUSD"
-            InventoryCostUSD        = "InventoryCostUSD"
-            InvDmgPct                = "InvDmgPct"
-            InventoryLossUSD         = "InventoryLossUSD"
-
-            # Note there are no Hazus equivalents for the following output attributes.
-            # DOGAMI believes these to be value-added, and suggests Hazus provide this information.
-            # See spreadsheet accompanying the script for naming convention
-            flExp         = "flExp"
-            Depth_in_Struc    = "Depth_in_Struc"
-            Depth_Grid    = "Depth_Grid"    # The renamed raster sample data. "RASTERVALU" is not a useful name
-            SOID        = "SOID" if SOI == '' else SOI        # Specific Occupancy ID
-            BDDF_ID        = "BDDF_ID" if BldgDamageFnID == '' else BldgDamageFnID
-            CDDF_ID        = "CDDF_ID" if ContDamageFnId == '' else ContDamageFnId
-            IDDF_ID        = "IDDF_ID" if InvDamageFnId == '' else InvDamageFnId
-            DebrisID    = "DebrisID"
-            Debris_Fin    = "Debris_Fin"      # Debris for Finish work
-            Debris_Struc= "Debris_Struc"      # Debris from structural elements
-            Debris_Found= "Debris_Found"       # Debris from foundation
-            Debris_Tot    = "Debris_Tot"      # Total Debris - sum of the previous
-            GridName    = "GridName"
-            Restor_Days_Min    = "Restor_Days_Min" # Repair/Restoration times
-            Restor_Days_Max    = "Restor_Days_Max"
-            #########################################################################################################
-            #  Setups for other namings.
-            #########################################################################################################
-            # Building, Content, Inventory DDF Lookup tables. Use these if user does not supply their own DDF_ID
-            # Note that Inventory has no unique LUTs for Coastal Zones.
-            # Prefix Naming Convention in this program:
-            #   B   Building
-            #   C   Content
-            #   I   Inventory
-            BR          = "Building_DDF_Riverine_LUT_Hazus4p0.csv"
-            BCA         = "Building_DDF_CoastalA_LUT_Hazus4p0.csv"
-            BCV         = "Building_DDF_CoastalV_LUT_Hazus4p0.csv"
-            BFull    = "flBldgStructDmgFn.csv"    # Full DDF library for Building Structural damage
-
-            CR          = "Content_DDF_Riverine_LUT_Hazus4p0.csv"
-            CCA         = "Content_DDF_CoastalA_LUT_Hazus4p0.csv"
-            CCV         = "Content_DDF_CoastalV_LUT_Hazus4p0.csv"
-            CFull    = "flBldgContDmgFn.csv"    # Full DDF library for Building Content damage
-
-            IR          = "Inventory_DDF_LUT_Hazus4p0.csv"
-            IFull    = "flBldgInvDmgFn.csv"    # Full DDF library for Building Inventory damage
-            IEconParams    = "flBldgEconParamSalesAndInv.csv"  # Needed to calculate business inventory value and loss
-            DebrisX    = "flDebris_LUT.csv"    # A synthesis of [dbo].[flDebris] and information Hazus Flood Technical Manual (2011), Table 11.1
-            RestFnc    = "flRsFnGBS_LUT.csv"    # A modification of [db].[flRsFnGBS] to make it compatible for lookup table purposes
-
-            # Other Lookup tables exported from SQL database that may be of interest for Direct Economic Loss calculations.
-            # The basic need DOGAMI had was to establish the building restoration times -
-            # and that is fundamental information for all other direct economic loss calculations
-            # DOGAMI did not calculate, for example, rental income loss.
-            # You can expand the functionality, if you wish,
-            # following the methods outlined in the Hazus Flood Technical Manual (2011)
-            #xx = "flBldgEconParamWageCapitalIncome.csv"
-            #xx = "flBldgEconParamRental.csv"
-            #xx = "flBldgEconParamRecaptureFactors.csv"
-            #xx = "flBldgEconParamOwnerOccupied.csv"
-            # Process some of the user input.
-            UDFRoot     = os.path.basename(UDFOrig)
-
-            #Resultsfgdb = os.path.join(ResultsDir,y)
-            Resultsfgdb = ResultsDir
-            #print("Results geodatabase: " + Resultsfgdb)
-            # Set up the look-up tables
-            BRP  = os.path.join(LUT_Dir, BR)
-            BCAP = os.path.join(LUT_Dir, BCA)
-            BCVP = os.path.join(LUT_Dir, BCV)
-            BFP  = os.path.join(LUT_Dir, BFull)
-            CRP  = os.path.join(LUT_Dir, CR)
-            CCAP = os.path.join(LUT_Dir, CCA)
-            CCVP = os.path.join(LUT_Dir, CCV)
-            CFP  = os.path.join(LUT_Dir, CFull)
-            IRP  = os.path.join(LUT_Dir, IR)
-            IFP  = os.path.join(LUT_Dir, IFull)
-            IEP  = os.path.join(LUT_Dir, IEconParams)
-            Debris = os.path.join(LUT_Dir,DebrisX)
-            Rest = os.path.join(LUT_Dir,RestFnc)
-
-            # Process the look-up tables into a list of Dictionary elements
-            # Note the standard (default) Lookup Tables were separately developed.
-            # Yes, they are a subset of the full lookup table
-            bddf_lut_riverine     = [row for row in csv.DictReader(open(BRP))]
-            bddf_lut_coastalA     = [row for row in csv.DictReader(open(BCAP))]
-            bddf_lut_coastalV     = [row for row in csv.DictReader(open(BCVP))]
-            bddf_lut_full         = [row for row in csv.DictReader(open(BFP))]
-
-            cddf_lut_riverine     = [row for row in csv.DictReader(open(CRP))]
-            cddf_lut_coastalA     = [row for row in csv.DictReader(open(CCAP))]
-            cddf_lut_coastalV     = [row for row in csv.DictReader(open(CCVP))]
-            cddf_lut_full         = [row for row in csv.DictReader(open(CFP))]
-
-            iddf_lut_riverine     = [row for row in csv.DictReader(open(IRP))]
-            iddf_lut_full         = [row for row in csv.DictReader(open(IFP))]
-            iecon_lut            = [row for row in csv.DictReader(open(IEP))]
-
-            debris_lut            = [row for row in csv.DictReader(open(Debris))]
-            rest_lut            = [row for row in csv.DictReader(open(Rest))]
-
-            # Build up lists to use for checking legitimate user-supplied DDF_ID values
-            bddf_lut_full_list = []
-            cddf_lut_full_list = []
-            iddf_lut_full_list = []
-            for x in bddf_lut_full:
-                bddf_lut_full_list.append(x['BldgDmgFnID'])    # Yes, the capitalization is due to a quirk in the [dbo].[flBldgStructDmgFn].
-            for x in cddf_lut_full:
-                cddf_lut_full_list.append(x['ContDmgFnId'])  # Yes, the case is inconsistent with Building column name. That's the way the Hazus database is.
-            for x in iddf_lut_full:
-                iddf_lut_full_list.append(x['InvDmgFnId'])
-
-            Content_x_0p5 = ['RES1','RES2','RES3A','RES3B','RES3C','RES3D','RES3E','RES3F','RES4','RES5','RES6','COM10']
-            Content_x_1p0 = ['COM1','COM2','COM3','COM4','COM5','COM8','COM9','IND6','AGR1','REL1','GOV1','EDU1']
-            Content_x_1p5 = ['COM6','COM7','IND1','IND2','IND3','IND4','IND5','GOV2','EDU2']
-
-            # Default inventory DDF only defined for a subset. IF not in this set, set default Inventory Cost Basis = 0
-            Inventory_List = ['COM1','COM2','IND1','IND2','IND3','IND4','IND5','IND6','AGR1']
-
-            # Check for the presence of optional fields (Coastal Flooding, user-supplied DDFs for Building, Content, Inventory)
-            #
-            CoastalZoneSupplied = ubddf = ucddf = uiddf =  cdest = idest = CoastalZoneCode = uccost = uicost = 0
-
-            xt = True if flC != '' else False
-            if xt:
-                print( "Coastal Flooding attribute (flC) supplied. Will use where specified")
-                CoastalZoneSupplied = 1
-            xt = True if BldgDamageFnID != '' else False
-            if xt:
-                print( "User-supplied Building Depth Damage Function (BldgDamageFnID) attribute supplied. Will use where specified")
-                ubddf = 1
-            xt = True if ContDamageFnId != ''  else False
-            if xt:
-                print("User-supplied Content  Depth Damage Function attribute (ContDamageFnId supplied. Will use where specified")
-                ucddf = 1
-            xt = True if InvDamageFnId != '' else False
-            if xt:
-                print("User-supplied Inventory Depth Damage Function attribute (InvDamageFnId supplied. Will use where specified")
-                uiddf = 1
-            xt = True if ContentCost != '' else False
-            if xt:
-                print( "User-supplied Content Cost supplied.  Will use user supplied value where specified, else use the default")
-                uccost = 1
-            xt = True if InvCost != '' else False
-            if xt:
-                print("User-supplied Inventory Cost supplied.  Will use user supplied value where specified, else use the default")
-                uicost = 1
                 
-            #logger.info('Custom DDF assignment based on tables...')
-            requiredFields = [UserDefinedFltyId,OccupancyClass,Cost,Area,NumStories,FoundationType,FirstFloorHt,latitude,longitude]
+                #########################################################################################################
+                # UDF Input Attributes. The following are standard Hazus names/capitalizations.
+                #########################################################################################################
+                UserDefinedFltyId,OccupancyClass,Cost,Area,NumStories,FoundationType,FirstFloorHt,ContentCost,BldgDamageFnID,ContDamageFnId,InvDamageFnId,InvCost,SOI,latitude,longitude,flC = fmap#[map for map in fmap if map != '' else]#[value if value != '' and any(value in s for s in field_names) == True else field for field, value in fmap]
+                
+                # If your UDF Naming Convention differs from the Hazus namings,
+                # you can specify your names here, and override the assignments above
+                # Example: (of course, uncomment this)
+                # UserDefinedFltyId = "UDF_ID"
 
-            # Process each depth grid specified by user
-            DGrids = DepthGrids#.split(';')   # Using the interactive window, it's not a list. Make it so.
-            for dgp in DGrids:
-                #print(" ")    # A formatting step to improve readability of output)
-                #print( "Querying depth grid " + dgp)
+                # Note that this script has no use for the following Hazus-MH Flood UDF variables:
+                #    Name, Address, City, Statea, Zipcode, Contact, PhoneNumber, YearBuilt, BackupPower,
+                #    ShelterCapacity, Latitude, Longitude, Comment, BldgType, DesignLevel, FloodProtection
 
-                # Set up the Results file. Extract grid to points, add needed fields, adjust for First Floor Height.
-                # Depth_in_Struc:  The adjusted flood depth
-                # flExp:   A simple 1/0 statement: is the UDF in the specified floodplain or is it not?
-                # SOID = SpecificOccupId.  A conversion of the OccupancyClass, FoundationType, and NumStories fields into a 4 to 5 character string for lookup.
-                # BDDF_ID = the particular Depth Damage Function ID used for that record
-                # BldgDmgPct = Loss Ratio for Building
-                # BldgLossUSD = Estimated Building Loss in US$  (some fraction of the user-specified Cost)
+                #########################################################################################################
+                #  UDF Output Attributes
+                #########################################################################################################
+                # Good programming practice: have these names as variables rather than hardcoded within commands
+                # Most users need not change these, unless you do not like the names
+                BldgDmgPct                = "BldgDmgPct"
+                BldgLossUSD                = "BldgLossUSD"
+                ContentCostUSD            = "ContentCostUSD"
+                ContDmgPct                = "ContDmgPct"
+                ContentLossUSD            = "ContentLossUSD"
+                InventoryCostUSD        = "InventoryCostUSD"
+                InvDmgPct                = "InvDmgPct"
+                InventoryLossUSD         = "InventoryLossUSD"
+
+                # Note there are no Hazus equivalents for the following output attributes.
+                # DOGAMI believes these to be value-added, and suggests Hazus provide this information.
+                # See spreadsheet accompanying the script for naming convention
+                flExp         = "flExp"
+                Depth_in_Struc    = "Depth_in_Struc"
+                Depth_Grid    = "Depth_Grid"    # The renamed raster sample data. "RASTERVALU" is not a useful name
+                SOID        = "SOID" if SOI == '' else SOI        # Specific Occupancy ID
+                BDDF_ID        = "BDDF_ID" if BldgDamageFnID == '' else BldgDamageFnID
+                CDDF_ID        = "CDDF_ID" if ContDamageFnId == '' else ContDamageFnId
+                IDDF_ID        = "IDDF_ID" if InvDamageFnId == '' else InvDamageFnId
+                DebrisID    = "DebrisID"
+                Debris_Fin    = "Debris_Fin"      # Debris for Finish work
+                Debris_Struc= "Debris_Struc"      # Debris from structural elements
+                Debris_Found= "Debris_Found"       # Debris from foundation
+                Debris_Tot    = "Debris_Tot"      # Total Debris - sum of the previous
+                GridName    = "GridName"
+                Restor_Days_Min    = "Restor_Days_Min" # Repair/Restoration times
+                Restor_Days_Max    = "Restor_Days_Max"
+                #########################################################################################################
+                #  Setups for other namings.
+                #########################################################################################################
+                # Building, Content, Inventory DDF Lookup tables. Use these if user does not supply their own DDF_ID
+                # Note that Inventory has no unique LUTs for Coastal Zones.
+                # Prefix Naming Convention in this program:
+                #   B   Building
+                #   C   Content
+                #   I   Inventory
+                BR          = "Building_DDF_Riverine_LUT_Hazus4p0.csv"
+                BCA         = "Building_DDF_CoastalA_LUT_Hazus4p0.csv"
+                BCV         = "Building_DDF_CoastalV_LUT_Hazus4p0.csv"
+                BFull    = "flBldgStructDmgFn.csv"    # Full DDF library for Building Structural damage
+
+                CR          = "Content_DDF_Riverine_LUT_Hazus4p0.csv"
+                CCA         = "Content_DDF_CoastalA_LUT_Hazus4p0.csv"
+                CCV         = "Content_DDF_CoastalV_LUT_Hazus4p0.csv"
+                CFull    = "flBldgContDmgFn.csv"    # Full DDF library for Building Content damage
+
+                IR          = "Inventory_DDF_LUT_Hazus4p0.csv"
+                IFull    = "flBldgInvDmgFn.csv"    # Full DDF library for Building Inventory damage
+                IEconParams    = "flBldgEconParamSalesAndInv.csv"  # Needed to calculate business inventory value and loss
+                DebrisX    = "flDebris_LUT.csv"    # A synthesis of [dbo].[flDebris] and information Hazus Flood Technical Manual (2011), Table 11.1
+                RestFnc    = "flRsFnGBS_LUT.csv"    # A modification of [db].[flRsFnGBS] to make it compatible for lookup table purposes
+
+                # Other Lookup tables exported from SQL database that may be of interest for Direct Economic Loss calculations.
+                # The basic need DOGAMI had was to establish the building restoration times -
+                # and that is fundamental information for all other direct economic loss calculations
+                # DOGAMI did not calculate, for example, rental income loss.
+                # You can expand the functionality, if you wish,
+                # following the methods outlined in the Hazus Flood Technical Manual (2011)
+                #xx = "flBldgEconParamWageCapitalIncome.csv"
+                #xx = "flBldgEconParamRental.csv"
+                #xx = "flBldgEconParamRecaptureFactors.csv"
+                #xx = "flBldgEconParamOwnerOccupied.csv"
+                # Process some of the user input.
+                UDFRoot     = os.path.basename(UDFOrig)
+
+                #Resultsfgdb = os.path.join(ResultsDir,y)
+                Resultsfgdb = ResultsDir
+
+                # Set up the look-up tables
+                BRP  = os.path.join(LUT_Dir, BR)
+                BCAP = os.path.join(LUT_Dir, BCA)
+                BCVP = os.path.join(LUT_Dir, BCV)
+                BFP  = os.path.join(LUT_Dir, BFull)
+                CRP  = os.path.join(LUT_Dir, CR)
+                CCAP = os.path.join(LUT_Dir, CCA)
+                CCVP = os.path.join(LUT_Dir, CCV)
+                CFP  = os.path.join(LUT_Dir, CFull)
+                IRP  = os.path.join(LUT_Dir, IR)
+                IFP  = os.path.join(LUT_Dir, IFull)
+                IEP  = os.path.join(LUT_Dir, IEconParams)
+                Debris = os.path.join(LUT_Dir,DebrisX)
+                Rest = os.path.join(LUT_Dir,RestFnc)
+
+                # Process the look-up tables into a list of Dictionary elements
+                # Note the standard (default) Lookup Tables were separately developed.
+                # Yes, they are a subset of the full lookup table
+                bddf_lut_riverine     = [row for row in csv.DictReader(open(BRP))]
+                bddf_lut_coastalA     = [row for row in csv.DictReader(open(BCAP))]
+                bddf_lut_coastalV     = [row for row in csv.DictReader(open(BCVP))]
+                bddf_lut_full         = [row for row in csv.DictReader(open(BFP))]
+
+                cddf_lut_riverine     = [row for row in csv.DictReader(open(CRP))]
+                cddf_lut_coastalA     = [row for row in csv.DictReader(open(CCAP))]
+                cddf_lut_coastalV     = [row for row in csv.DictReader(open(CCVP))]
+                cddf_lut_full         = [row for row in csv.DictReader(open(CFP))]
+
+                iddf_lut_riverine     = [row for row in csv.DictReader(open(IRP))]
+                iddf_lut_full         = [row for row in csv.DictReader(open(IFP))]
+                iecon_lut            = [row for row in csv.DictReader(open(IEP))]
+
+                debris_lut            = [row for row in csv.DictReader(open(Debris))]
+                rest_lut            = [row for row in csv.DictReader(open(Rest))]
+
+                # Build up lists to use for checking legitimate user-supplied DDF_ID values
+                bddf_lut_full_list = []
+                cddf_lut_full_list = []
+                iddf_lut_full_list = []
+                for x in bddf_lut_full:
+                    bddf_lut_full_list.append(x['BldgDmgFnID'])    # Yes, the capitalization is due to a quirk in the [dbo].[flBldgStructDmgFn].
+                for x in cddf_lut_full:
+                    cddf_lut_full_list.append(x['ContDmgFnId'])  # Yes, the case is inconsistent with Building column name. That's the way the Hazus database is.
+                for x in iddf_lut_full:
+                    iddf_lut_full_list.append(x['InvDmgFnId'])
+
+                Content_x_0p5 = ['RES1','RES2','RES3A','RES3B','RES3C','RES3D','RES3E','RES3F','RES4','RES5','RES6','COM10']
+                Content_x_1p0 = ['COM1','COM2','COM3','COM4','COM5','COM8','COM9','IND6','AGR1','REL1','GOV1','EDU1']
+                Content_x_1p5 = ['COM6','COM7','IND1','IND2','IND3','IND4','IND5','GOV2','EDU2']
+
+                # Default inventory DDF only defined for a subset. IF not in this set, set default Inventory Cost Basis = 0
+                Inventory_List = ['COM1','COM2','IND1','IND2','IND3','IND4','IND5','IND6','AGR1']
+
+                # Check for the presence of optional fields (Coastal Flooding, user-supplied DDFs for Building, Content, Inventory)
                 #
-                # Need to strip out any periods in the depth grid file name, say, "depth100.tif", as periods are COMPLETELY UNACCEPTABLE in fgdb feature class naming
-                # And if an input shapefile is specified, drop the *.shp extension. So a Texas Two Step to get a clean name
-                
-                y = os.path.split(dgp)[1]
-                x = UDFRoot.split('.')[0] + "_" + y.split('.')[0]
-                ResultsFile = os.path.join(Resultsfgdb,x)
-                #print("Writing results to " + ResultsFile)
-                gridroot = y    #  Put into an attribute in the Results file. Redundant, but handy when appending multiple results files together.
+                CoastalZoneSupplied = ubddf = ucddf = uiddf =  cdest = idest = CoastalZoneCode = uccost = uicost = 0
 
-                # Some research should go into INTERPOLATE versus NONE in the next function.
-                # A cursory peek suggested Hazus-MH Flood does 'NONE' (it had a better match).
-                # So to better match to the Hazus-MH Flood results, we (for now) choose 'NONE'.            
-                # Process each UDF record, calculating its damage based on depth and building type.
-                
-                #print("Processing depth grid "+ dgp +  " record by record")
-                
-                new_fields = [Depth_Grid,Depth_in_Struc,flExp,SOID,BDDF_ID,BldgDmgPct,BldgLossUSD,ContentCostUSD,CDDF_ID,ContDmgPct,ContentLossUSD,InventoryCostUSD,IDDF_ID,InvDmgPct,InventoryLossUSD,DebrisID,Debris_Fin,Debris_Struc,Debris_Found,Debris_Tot,Restor_Days_Min,Restor_Days_Max,GridName]
-                field_names = field_names + new_fields
-                counter = 0
-                counter2 = 0
-                
-                recCountNonZeroDepth = 0
-                
-                invalidSOID = 0
-                
-                #file_out = open(os.path.join(Resultsfgdb,x+".csv"), 'w')
-                
-                #CBH - to display the output directory on the final message
-                outputDir = os.path.join(Resultsfgdb,x+".csv")
-                file_out = open(outputDir, 'w')
-                
-                raster = gdal.Open(dgp)
-                
-                #os.sys('gdalwarp '+dgp+' '+' C:/Users/Owner/Desktop/work.tif -t_srs "+proj=longlat +ellps=WGS84"')
-                
-                band = raster.GetRasterBand(1)            
-                noData = band.GetNoDataValue()
-                cols = raster.RasterXSize
-                rows = raster.RasterYSize
-                transform = raster.GetGeoTransform()
-                xOrigin = transform[0]
-                yOrigin = transform[3]
-                pixelWidth = transform[1]
-                pixelHeight = -transform[5]
-                data = band.ReadAsArray(0, 0, cols, rows)#gdal_array.LoadFile(dgp)
-                IsUTM = True if osr.SpatialReference(wkt=raster.GetProjection()).GetAttrValue('UNIT') == 'metre' else False
-                print('Is it UTM? ', IsUTM)
-                
-                with open(UDFOrig, newline='') as csvfile:
-                    writer = csv.DictWriter(file_out, delimiter=',', lineterminator='\n', fieldnames = field_names)
-                    file = csv.DictReader(csvfile)
-                    for row in file:
-                        counter += 1#CBH - counter for unmatched SoccIds
-                        try:
+                xt = True if flC != '' else False
+                if xt:
+                    print( "Coastal Flooding attribute (flC) supplied. Will use where specified")
+                    CoastalZoneSupplied = 1
+                xt = True if BldgDamageFnID != '' else False
+                if xt:
+                    print( "User-supplied Building Depth Damage Function (BldgDamageFnID) attribute supplied. Will use where specified")
+                    ubddf = 1
+                xt = True if ContDamageFnId != ''  else False
+                if xt:
+                    print("User-supplied Content  Depth Damage Function attribute (ContDamageFnId supplied. Will use where specified")
+                    ucddf = 1
+                xt = True if InvDamageFnId != '' else False
+                if xt:
+                    print("User-supplied Inventory Depth Damage Function attribute (InvDamageFnId supplied. Will use where specified")
+                    uiddf = 1
+                xt = True if ContentCost != '' else False
+                if xt:
+                    print( "User-supplied Content Cost supplied.  Will use user supplied value where specified, else use the default")
+                    uccost = 1
+                xt = True if InvCost != '' else False
+                if xt:
+                    print("User-supplied Inventory Cost supplied.  Will use user supplied value where specified, else use the default")
+                    uicost = 1
+                    
+                #logger.info('Custom DDF assignment based on tables...')
+                requiredFields = [UserDefinedFltyId,OccupancyClass,Cost,Area,NumStories,FoundationType,FirstFloorHt,latitude,longitude]
+
+                # Process each depth grid specified by user
+                DGrids = DepthGrids#.split(';')   # Using the interactive window, it's not a list. Make it so.
+                for dgp in DGrids:
+                    # Set up the Results file. Extract grid to points, add needed fields, adjust for First Floor Height.
+                    # Depth_in_Struc:  The adjusted flood depth
+                    # flExp:   A simple 1/0 statement: is the UDF in the specified floodplain or is it not?
+                    # SOID = SpecificOccupId.  A conversion of the OccupancyClass, FoundationType, and NumStories fields into a 4 to 5 character string for lookup.
+                    # BDDF_ID = the particular Depth Damage Function ID used for that record
+                    # BldgDmgPct = Loss Ratio for Building
+                    # BldgLossUSD = Estimated Building Loss in US$  (some fraction of the user-specified Cost)
+                    #
+                    # Need to strip out any periods in the depth grid file name, say, "depth100.tif", as periods are COMPLETELY UNACCEPTABLE in fgdb feature class naming
+                    # And if an input shapefile is specified, drop the *.shp extension. So a Texas Two Step to get a clean name
+                    
+                    y = os.path.split(dgp)[1]
+                    x = UDFRoot.split('.')[0] + "_" + y.split('.')[0]
+                    ResultsFile = os.path.join(Resultsfgdb,x)
+                    gridroot = y    #  Put into an attribute in the Results file. Redundant, but handy when appending multiple results files together.
+
+                    # Some research should go into INTERPOLATE versus NONE in the next function.
+                    # A cursory peek suggested Hazus-MH Flood does 'NONE' (it had a better match).
+                    # So to better match to the Hazus-MH Flood results, we (for now) choose 'NONE'.            
+                    # Process each UDF record, calculating its damage based on depth and building type.
+                        
+                    new_fields = [Depth_Grid,Depth_in_Struc,flExp,SOID,BDDF_ID,BldgDmgPct,BldgLossUSD,ContentCostUSD,CDDF_ID,ContDmgPct,ContentLossUSD,InventoryCostUSD,IDDF_ID,InvDmgPct,InventoryLossUSD,DebrisID,Debris_Fin,Debris_Struc,Debris_Found,Debris_Tot,Restor_Days_Min,Restor_Days_Max,GridName]
+                    field_names = field_names + new_fields
+                    # counter = 0
+                    counter2 = 0
+                    
+                    recCountNonZeroDepth = 0
+                    
+                    invalidSOID = 0
+                    
+                    #file_out = open(os.path.join(Resultsfgdb,x+".csv"), 'w')
+                    
+                    #CBH - to display the output directory on the final message
+                    outputDir = os.path.join(Resultsfgdb,x+".csv")
+                    file_out = open(outputDir, 'w')
+                    raster = gdal.Open(dgp)
+                    #fn = 'aster.img'
+                    ds = gdal.Open(dgp, GA_ReadOnly)
+                    if ds is None:
+                        print('Could not open ' + dgp)
+                        sys.exit(1)
+                    #os.sys('gdalwarp '+dgp+' '+' C:/Users/Owner/Desktop/work.tif -t_srs "+proj=longlat +ellps=WGS84"')
+                    band = raster.GetRasterBand(1)      
+                    noData = band.GetNoDataValue()
+                    cols = raster.RasterXSize
+                    rows = raster.RasterYSize
+                    transform = raster.GetGeoTransform()
+                    xOrigin = transform[0]
+                    yOrigin = transform[3]
+                    pixelWidth = transform[1]
+                    pixelHeight = -transform[5]
+                    data = band.ReadAsArray(0, 0, cols, rows)
+                    IsUTM = True if osr.SpatialReference(wkt=raster.GetProjection()).GetAttrValue('UNIT') == 'metre' else False
+                    print('Is it UTM? ', IsUTM)
+                            
+                    with open(UDFOrig, newline='') as csvfile:
+                        writer = csv.DictWriter(file_out, delimiter=',', lineterminator='\n', fieldnames = field_names)
+                        file = csv.DictReader(csvfile)
+                        for row in file:
+                            counter += 1#CBH - counter for unmatched SoccIds
+                            #try:
                             #Check if any required fields are NULL
                             #If NULL do not process the record and do not make an entry in the results file
                             if None in [row[rField] for rField in requiredFields] or '' in [row[rField] for rField in requiredFields]: 
@@ -331,25 +321,22 @@ class UDF():
                                 continue #CBH - Change added 8/28/19
                             def getValue(name):# Get value of row from name.
                                 if name != Depth_Grid:
-                                    #print(name,row)
                                     val = row[name].strip() if row[name].strip() != '' else 0#CBH
                                     try: val = float(val)#CBH
                                     except: pass#CBH
                                     return val
-                                else:
-                                    
+                                else:                        
                                     X = float(getValue(longitude))
                                     Y = float(getValue(latitude))
-                                    #print(utm.from_latlon(Y, X),list(utm.from_latlon(Y, X))[:2])
                                     X, Y = list(utm.from_latlon(Y, X)[:2]) if IsUTM else [X, Y]
-                                    #print('X,Y = ', X,Y)
                                     col = int((X - xOrigin) / pixelWidth)
                                     roww = int((yOrigin - Y ) / pixelHeight)
                                     
                                     #If incorrect depth grid used the depth is set to 0
-                                    val = data[roww][col] if abs(col) < abs(cols) and abs(roww) < abs(rows) and data[roww][col] != noData else 0
+                                    #PRUSVI
+                                    val = data[roww][col] #if abs(col) < abs(cols) and abs(roww) < abs(rows) and data[roww][col] != noData else 0 
                                     #val = retrieve_pixel_value((Y,X))
-                                    
+                                    #logger = logging.getLogger(str(data[roww][col]) + ' ' + str(abs(col)) + ' ' +str(abs(cols)) +  ' ' + str(abs(roww)) + ' ' + str(abs(rows)))                       
                                     row[name] = val
                                     return(float(val))
 
@@ -421,11 +408,14 @@ class UDF():
 
                             else:
                                 # All other cases: Easy!  1-3, 4-7, 8+
-                                somid = 'H' if numStories > 6 else 'M' if numStories > 3 else 'L'                         
+                                somid = 'H' if numStories > 6 else 'M' if numStories > 3 else 'L'
+                                
                             SpecificOccupId = sopre + somid + sosuf
+                            
                             #if OC[:4] == 'RES1' and foundationType == 4:
                             #    logger.info('foundation type = ' + str(foundationType) + ' and SOID = ' + SpecificOccupId)
                             #logger.info(SpecificOccupId)
+                            
                             setValue(SOID,SpecificOccupId)
 
                             # Content and Inventory Cost. Determine each, even if structure not exposed to flooding
@@ -540,29 +530,41 @@ class UDF():
                                 # Did user specify a Building DDF? If so, use that to reference the Full LUT, else use the Default LUT.
                                 # Due to Hazus-MH Flood definitions, this is Text type.
                                 BID = getValue(BldgDamageFnID) if ubddf else None
-
+                                
+                                #print(',OC=' + OC + ',QC_Warning=' + str(QC_Warning)+ ',BID=' + str(int(BID)))
+                                #print(bddf_lut_full_list)
                                 # If BID is specified by the user, and defined, then assume they know what is best, and use the full lookup table.
                                 # Tests are ok if you go left-to-right. Go from most-basic-test-to-more-advanced in the same line.  Can't flip the order here!
-                                if BID is not None and BID != '' and BID in bddf_lut_full_list:
+                                if BID is not None and BID != '' and str(int(BID)) in bddf_lut_full_list:
                                     # Search the  full lookup table to find the DDF_ID that matches the BID
                                     # 'gotcha' checks for no hits - set a check bit - that should not happen, given the membership test with bddf_lut_full_list.
                                     # For more efficiency, break out of the loop if it is found
                                     gotcha = 0
+                                    #print("inside")
                                     for lutrow in bddf_lut_full:
-                                        if lutrow['BldgDmgFnID'] == BID:    # This is a string match. For completeness and trailing spaces, may want to make it an integer?
-                                            gotcha += 1
+                                        if lutrow['BldgDmgFnID'] == str(int(BID)):    # This is a string match. For completeness and trailing spaces, may want to make it an integer?
+                                            gotcha += 1                                
                                             ddf1 = lutrow
                                             # Notify user if the OccupancyClass associated with the user-specified DDFID is inconsistent with the user-supplied OccupancyClass
                                             # This is not harmful; DOGAMI script has chosen to just process it (Hazus silently reverts back to the default!)
                                             # Simple notification
                                             OccClsCheck = ddf1['Occupancy']
+                                            #print('Occupancy =' + OccClsCheck + ',OC=' + OC + ',QC_Warning=' + str(QC_Warning))
                                             if OccClsCheck != OC and QC_Warning:
                                                 print("FYI: User-supplied Building DDFID " + BID + " Occupancy Class is inconsistent with UDF Occupancy Class " + OC + " versus "+OccClsCheck+ "  " + userDefinedFltyId)
                                             break
-                                    d_lower = float(ddf1[l_index])
-                                    d_upper = float(ddf1[u_index])
+                                            
+                                    #UKS RTC Task 35520 - Custom DDFs implementation 04/08/2020
+                                    if gotcha != 0:
+                                        d_lower = float(ddf1[l_index])
+                                        d_upper = float(ddf1[u_index])
+                                        #eflBDDF = 1
+                                    else:
+                                        d_lower = 0
+                                        d_upper = 0
+                                        damage = 0
+                                        
                                     ddf_id = int(BID)  # Yes, it is redundant to post, again, what the user specified. But it is consistent with Default LUT
-
                                 else:
                                     # We may have gotten here because of a bad BDDF code. If so, revert to the default and notify user
                                     # Note we are in the Default DDF section, and will calculate loss in that manner.
@@ -578,6 +580,9 @@ class UDF():
                                     # Change DDF table only if Coastal Zone is defined (CoastalZoneSuppled) AND a legitimate Coastal Zone Code (AE, V, VE)
                                     # Otherwise use default ddf.
                                     # As of Hazus 4.0, Coastal lookup tables are only applicable for RES-type structures.
+                                    
+                                    #UKS 04/09/2020, RTC Task 35520 - Custom DDFs implementation
+                                    #Need to assign default only if blank Building DDF provided by the user                       
                                     blut = bddf_lut_riverine
                                     if CoastalZoneSupplied and OC[:3] =='RES':
                                         if CoastalZoneCode == 'CAE' :
@@ -590,8 +595,14 @@ class UDF():
                                         if lutrow['SpecificOccupId'] == SpecificOccupId:
                                             gotcha += 1
                                             ddf1 = lutrow
-                                            ddf_id = lutrow['DDF_ID']   # For the Record. Will go in the Results file.
+                                            #UKS 04/09/2020, RTC Task 35520 - Custom DDFs implementation
+                                            # Not overwriting User's BDDF
+                                            if BID is None or BID == '':
+                                                ddf_id = lutrow['DDF_ID']   # For the Record. Will go in the Results file.
+                                            else:
+                                                ddf_id = int(BID)
                                             break # Quit once you found it.
+
                                     if gotcha == 0:
                                         # This should not occur
                                         print( "something wrong, no match for Specific Occupancy ID :" + SpecificOccupId + "   UDF: " + UserDefinedFltyId)
@@ -605,21 +616,28 @@ class UDF():
                                 
                                 # Dictionary lookup: get damage percentage for the particular row at the particular depths
                                 # The Dictionary element comes from either the Full or the Default table; common code after this point.
-                                d_lower = float(ddf1[l_index])
-                                d_upper = float(ddf1[u_index])
-                                # Get fractional amount of depth, for interpolation
-                                frac = depth - math.floor(depth)
-                                damage = (d_lower + frac*(d_upper - d_lower))/100
-
+                                #UKS 04/08/2020, RTC Task 35520 - Custom DDFs implementation
+                                if gotcha != 0:
+                                    d_lower = float(ddf1[l_index])
+                                    d_upper = float(ddf1[u_index])
+                                    # Get fractional amount of depth, for interpolation
+                                    frac = depth - math.floor(depth)
+                                    damage = (d_lower + frac*(d_upper - d_lower))/100
+                                else:
+                                    damage = 0
+                                        
                                 if gotcha == 0:
                                     # This should not occur, given the memebership test with bddf_lut_full_list. Just in case:
-                                    print("Problem: nothing matches the SpecificOccupId of " + SpecificOccupId + "     Check entry UDFID " + userDefinedFltyId + " with " + OC )
+                                    print("Problem: nothing matches the SpecificOccupId of " + SpecificOccupId + "     Check entry UDFID " + str(userDefinedFltyId) + " with " + OC )
                                     SpecificOccupId = "XXXX"
+                                    
+                                    #UKS 04/08/2020, RTC Task 35520 - Custom DDFs implementation
                                     BDDF_ID = LR = bldg_loss = -9999
+                                    damage = 0
 
-                                # Calculate building loss, set other attributes
-                                setValue(SOID,SpecificOccupId)
+                                # Calculate building loss, set other attributes                                    
                                 setValue(BDDF_ID,ddf_id)
+                                setValue(SOID,SpecificOccupId)
                                 setValue(BldgDmgPct,damage*100)  # Hazus convention: percentage
                                 bldg_loss = damage * int(getValue(Cost))
                                 setValue(BldgLossUSD,bldg_loss)
@@ -632,14 +650,14 @@ class UDF():
                                 BID = getValue(ContDamageFnId)if ucddf else None
 
                                 # If BID is specified by the user, then assume they know what is best, and use the full lookup table.
-                                # Tests are ok if you go left-to-right. Go from most-basic-test-to-more-advanced in the same line.  Can't flip the order here!
-                                if BID is not None and BID != '' and BID in cddf_lut_full_list:
+                                # Tests are ok if you go left-to-right. Go from most-basic-test-to-more-advanced in the same line.  Can't flip the order here!                   
+                                if BID is not None and BID != '' and str(int(BID)) in cddf_lut_full_list:
                                     # Search the  full lookup table to find the DDF_ID that matches the BID
                                     # 'gotcha' checks for no hits - set a check bit - that should not happen, given the membership test with bddf_lut_full_list.
                                     # For more efficiency, break out of the loop if it is found
                                     gotcha = 0
                                     for lutrow in cddf_lut_full:
-                                        if lutrow['ContDmgFnId'] == BID:    # This is a string match. For completeness and trailing spaces, may want to make it an integer?
+                                        if lutrow['ContDmgFnId'] == str(int(BID)):    # This is a string match. For completeness and trailing spaces, may want to make it an integer?
                                             gotcha += 1
                                             ddf1 = lutrow
                                             # Notify user if the OccupancyClass associated with the user-specified DDFID is inconsistent with the user-supplied OccupancyClass
@@ -649,8 +667,14 @@ class UDF():
                                             if OccClsCheck != OC and QC_Warning:
                                                 print("FYI: User-supplied Content  DDFID " + BID + " Occupancy Class is inconsistent with UDF Occupancy Class " + OC + " versus "+OccClsCheck+ "  " + userDefinedFltyId)
                                             break
-                                    d_lower = float(ddf1[l_index])
-                                    d_upper = float(ddf1[u_index])
+                                    #UKS 04/08/2020, RTC Task 35520 - Custom DDFs implementation
+                                    if gotcha !=0:
+                                        d_lower = float(ddf1[l_index])
+                                        d_upper = float(ddf1[u_index])
+                                    else:
+                                        d_lower = 0
+                                        d_upper = 0
+                                        damage = 0
                                     ddf_id = int(BID)  # Yes, it is redundant to post, again, what the user specified. But it is consistent with Default LUT
 
                                 else:
@@ -667,6 +691,9 @@ class UDF():
                                     # Change DDF table if Coastal; otherwise use default ddf.
                                     # As of Hazus 4.0, Coastal lookuptables only applicable for RES-type structures.
                                     # Need to filter out "REL" from "RES" - look at second letter
+                                    
+                                    #UKS 04/09/2020, RTC Task 35520 - Custom DDFs implementation
+                                    # Need to assign default only if blank Content DDF provided by the user
                                     clut = cddf_lut_riverine
                                     if CoastalZoneSupplied and OC[:3] =='RES':
                                         if CoastalZoneCode == 'CAE' :
@@ -678,7 +705,12 @@ class UDF():
                                         if lutrow['SpecificOccupId'] == SpecificOccupId:
                                             gotcha += 1
                                             ddf1 = lutrow
-                                            ddf_id = lutrow['DDF_ID']   # For the Record. Will go in the Results file.
+                                            #UKS 04/09/2020, RTC Task 35520 - Custom DDFs implementation
+                                            #Not overwriting User's CDDF
+                                            if BID is None or BID == '':
+                                                ddf_id = lutrow['DDF_ID']   # For the Record. Will go in the Results file.
+                                            else:
+                                                ddf_id = int(BID)
                                             break # Quit once you found it.
                                     if gotcha == 0:
                                         # This should not occur
@@ -687,18 +719,26 @@ class UDF():
 
                                 # Dictionary lookup: get damage percentage for the particular row at the particular depths
                                 # The Dictionary element comes from either the Full or the Default table; common code after this point.
-                                d_lower = float(ddf1[l_index])
-                                d_upper = float(ddf1[u_index])
-                                # Get fractional amount of depth, for interpolation
-                                frac = depth - math.floor(depth)
-                                damage = (d_lower + frac*(d_upper - d_lower))/100
+                                #UKS 04/08/2020, RTC Task 35520 - Custom DDFs implementation
+                                if gotcha != 0:
+                                    d_lower = float(ddf1[l_index])
+                                    d_upper = float(ddf1[u_index])
+                                    # Get fractional amount of depth, for interpolation
+                                    frac = depth - math.floor(depth)
+                                    damage = (d_lower + frac*(d_upper - d_lower))/100
+                                else:
+                                    damage = 0
 
                                 if gotcha == 0:
                                     # Should not occur, given the check for membership in the list. But here just in case
                                     print("Problem with Content Loss: nothing matches the SpecificOccupId of " + SpecificOccupId + "Check entry " + str(counter) + " with " + OC + " " + str(numStories))
                                     SpecificOccupId = "XXXX"
+                                    
+                                    #UKS 04/08/2020, RTC Task 35520 - Custom DDFs implementation
+                                    #No need to change the CDDF_ID
                                     CDDF_ID = LR = bldg_loss = -9999
-
+                                    damage = 0
+                            
                                 setValue(CDDF_ID,ddf_id)
                                 setValue(ContDmgPct,damage*100)   # Hazus convention: percenage
                                 content_loss = damage*ccost
@@ -712,13 +752,14 @@ class UDF():
                                 BID = getValue(InvDamageFnId) if uiddf else None
                                 # If BID is specified by the user, then assume they know what is best, and use the full lookup table.
                                 # Tests are ok if you go left-to-right. Go from most-basic-test-to-more-advanced in the same line.  Can't flip the order here!
-                                if BID is not None and BID != '' and BID in iddf_lut_full_list:
+                                                
+                                if BID is not None and BID != '' and str(int(BID)) in iddf_lut_full_list:
                                     # Search the  full lookup table to find the DDF_ID that matches the BID
                                     # 'gotcha' checks for no hits - set a check bit - that should not happen, given the membership test with bddf_lut_full_list.
                                     # For more efficiency, break out of the loop if it is found
                                     gotcha = 0
                                     for lutrow in iddf_lut_full:
-                                        if lutrow['InvDmgFnId'] == BID:    # This is a string match. For completeness and trailing spaces, may want to make it an integer?
+                                        if lutrow['InvDmgFnId'] == str(int(BID)):    # This is a string match. For completeness and trailing spaces, may want to make it an integer?
                                             gotcha += 1
                                             ddf1 = lutrow
                                             # Notify user if the OccupancyClass associated with the user-specified DDFID is inconsistent with the user-supplied OccupancyClass
@@ -728,12 +769,15 @@ class UDF():
                                             if OccClsCheck != OC and QC_Warning:
                                                 print("FYI: User-supplied Inventory DDFID " + BID + " Occupancy Class is inconsistent with UDF Occupancy Class " + OC + " versus "+OccClsCheck+ "  " + userDefinedFltyId)
                                             break
-                                    d_lower = float(ddf1[l_index])
-                                    d_upper = float(ddf1[u_index])
-                                    frac = depth - math.floor(depth)
-                                    damage = (d_lower + frac*(d_upper - d_lower))/100
+                                    #UKS 04/0982020, RTC Task 35520 - Custom DDFs implementation
+                                    if gotcha !=0:
+                                        d_lower = float(ddf1[l_index])
+                                        d_upper = float(ddf1[u_index])
+                                        frac = depth - math.floor(depth)
+                                        damage = (d_lower + frac*(d_upper - d_lower))/100                            
+                                    else:
+                                        damage = 0
                                     ddf_id = int(BID)  # Yes, it is redundant to post, again, what the user specified. But it is consistent with Default LUT
-
                                 else:
                                     # We may have gotten here because of a bad IDDF code. If so, revert to the default and notify user
                                     # Note we are in the Default DDF section, and will calculate loss in that manner.
@@ -748,40 +792,48 @@ class UDF():
                                     # Inventory: There is no Coastal Flooding default table to use
                                     ilut = iddf_lut_riverine
 
-                                    # Default Inventory DDF defined only for a subset of OccupancyClass types
+                                    # Default Inventory DDF defined only for a subset of OccupancyClass types                                               
                                     if OC in Inventory_List:
                                         for lutrow in ilut:
                                             if lutrow['SpecificOccupId'] == SpecificOccupId:
                                                 gotcha += 1
                                                 ddf1 = lutrow
-                                                ddf_id = lutrow['DDF_ID']   # For the Record. Will go in the Results file.
+                                                #UKS 04/09/2020- Not overwriting User's IDDF
+                                                if BID is None or BID == '':
+                                                    ddf_id = lutrow['DDF_ID']   # For the Record. Will go in the Results file.
+                                                else:
+                                                    ddf_id = int(BID)
                                                 break # Quit once you found it.
-                                        if gotcha == 0:
+                                                
+                                        #UKS 04/10/2020 - commented to clean up
+                                        #if gotcha == 0:
                                             # This should not occur
-                                            print("something wrong for Inventory lookup, no match for Specific Occupancy ID :" + SpecificOccupId + "   Counter:" + str(counter))
-                                            sys.exit(2)
+                                        #    print("something wrong for Inventory lookup, no match for Specific Occupancy ID :" + SpecificOccupId + "   Counter:" + str(counter))
+                                            #sys.exit(2)
 
                                         # Dictionary lookup: get damage percentage for the particular row at the particular depths
                                         # The Dictionary element comes from either the Full or the Default table; common code after this point.
-                                        d_lower = float(ddf1[l_index])
-                                        d_upper = float(ddf1[u_index])
-                                        # Get fractional amount of depth, for interpolation
-                                        frac = depth - math.floor(depth)
-                                        damage = (d_lower + frac*(d_upper - d_lower))/100
+                                        if gotcha != 0:
+                                            d_lower = float(ddf1[l_index])
+                                            d_upper = float(ddf1[u_index])
+                                            # Get fractional amount of depth, for interpolation
+                                            frac = depth - math.floor(depth)
+                                            damage = (d_lower + frac*(d_upper - d_lower))/100
 
                                         if gotcha == 0:
                                             # Should not occur, given the check for membership in the list. But here just in case
                                             print("Problem with Inventory Loss: nothing matches the SpecificOccupId of " + SpecificOccupId + "Check entry " + str(counter) + " with " + OC + " " + str(numStories))
                                             SpecificOccupId = "XXXX"
+                                            
+                                            #UKS 04/08/2020 - No need to change the BDDF_ID & damage = 0 and SOCID not found in the deafult csv
                                             IDDF_ID = LR = bldg_loss = -9999
-
-
+                                            damage = 0
                                     else:
                                         # No default DDF ID exists for the given OccupancyClass. Fill them in with zeros
                                         damage = 0
                                         ddf_id = 0
-
-                                setValue(IDDF_ID,ddf_id)
+                                                        
+                                setValue(IDDF_ID,ddf_id)                
                                 setValue(InvDmgPct,damage*100)  # Hazus convention - percentage
 
                                 # Inventory Loss in US$: depends if user supplied an inventory cost field, and if it is > 0.
@@ -792,7 +844,6 @@ class UDF():
                                 # OWDI = OccupancyClass with Default Inventory
                                 # USID = User-supplied Inventory DDF is supplied and legitimate
                                 # USIC = User-supplied Inventory Cost is supplied and non-zero and non-null
-
 
                                 inventory_loss = damage * icost
                                 setValue(InventoryLossUSD,inventory_loss)
@@ -874,66 +925,61 @@ class UDF():
                                 setValue(Restor_Days_Min,restdays_min)
                                 setValue(Restor_Days_Max,restdays_max)
 
-                            # When running multiple grids, sensitivity tests, etc, adding the gridname makes it easier to sort upon an appended dataset
-                            
+                            # When running multiple grids, sensitivity tests, etc, adding the gridname makes it easier to sort upon an appended dataset             
                             setValue(GridName,gridroot)
-                            #counter += 1 #CBH
-                            #counter2 += 1 #CBH
-
                             recCountNonZeroDepth += 1
                             if counter == 1:
                                 writer.writeheader()
                                 writer.writerow(row)                           
                                 continue
                             writer.writerow(row)
-                        except Exception as e:
-                            print(e)
-                            logger.info("Expection occured")
-                            writer.writerow(row)
-                            #counter += 1
-                            counter2 += 1
-                            continue
-                        
-                                
-                file_out.close()       
-                #UKS - Sorting and logging          
-                logger.info('Loss calculations complete for the selected grid...')
-                logger.info('Sorting reults by Depth in structure...')
-                del data
-                csv_input = csv.DictReader(open(outputDir, 'r', newline=''))#csv.DictReader(f_input)
-                data = sorted(csv.DictReader(open(outputDir, 'r', newline='')), key=lambda row:(abs(float(row['Depth_in_Struc']))< 0,float(row['Depth_in_Struc'])), reverse=True)
-                #f_input.close()       
-                
-                #os.unlink(ResultsFile + '.csv')
-                logger.info('Results saved into ' + ResultsFile + '.csv')
-                with open(ResultsFile + '_sorted.csv', 'w', newline='') as f_output:
-                    csv_output = csv.DictWriter(f_output, fieldnames=csv_input.fieldnames)
-                    csv_output.writeheader()
-                    csv_output.writerows(data)
-                f_output.close()
-        
+                            """
+                            except Exception as e:
+                                print(e)
+                                logger.info("Expection occured")
+                                writer.writerow(row)
+                                #counter += 1
+                                counter2 += 1
+                                continue
+                            """
+                                    
+                    file_out.close()       
+                    #UKS - Sorting and logging          
+                    logger.info('Loss calculations complete for the selected grid...')
+                    logger.info('Sorting reults by Depth in structure...')
+                    del data
+                    csv_input = csv.DictReader(open(outputDir, 'r', newline=''))#csv.DictReader(f_input)
+                    data = sorted(csv.DictReader(open(outputDir, 'r', newline='')), key=lambda row:(abs(float(row['Depth_in_Struc']))< 0,float(row['Depth_in_Struc'])), reverse=True)
+                    #f_input.close()       
+                    
+                    #os.unlink(ResultsFile + '.csv')
+                    logger.info('Results saved into ' + ResultsFile + '.csv')
+                    with open(ResultsFile + '_sorted.csv', 'w', newline='') as f_output:
+                        csv_output = csv.DictWriter(f_output, fieldnames=csv_input.fieldnames)
+                        csv_output.writeheader()
+                        csv_output.writerows(data)
+                    f_output.close()
 
 
-            #logger.info('Total records processed: ' + str(counter) + ' of ' + str(counter2) + ' records total.' + 'Total records with flooding: ' + str(recCountNonZeroDepth))
 
-                #CBH
-                #UKS - modified for complete file name on the final message box           
-                log.append([counter,counter2,recCountNonZeroDepth,invalidSOID,os.path.basename(dgp),ResultsFile + '.csv'])            
+                #logger.info('Total records processed: ' + str(counter) + ' of ' + str(counter2) + ' records total.' + 'Total records with flooding: ' + str(recCountNonZeroDepth))
 
-                #recCountNonZeroDepth counter logged, concatenated to the message and reset
-            message = ''   
-            for grid in log:#CBH
-                message += 'For depth-grid: ' + str(grid[4]) + '\n' + str(grid[0])+' records processed of ' + str(grid[0]) + ' records total.\n' + \
-                'Total records with flooding: ' + str(grid[2]) + '\n' + \
-                'Total number of records with unmatched Specific Occupancy IDs found: ' + \
-                str(grid[3]) +'\n File saved to: ' + os.path.realpath(os.path.join(os.path.dirname(outputDir),str(grid[5]))) + '\n\n' #UKS - modified for complete file name #CBH - change added 8/28/19
-                        
-                recCountNonZeroDepth = 0    
+                    #CBH
+                    #UKS - modified for complete file name on the final message box           
+                    log.append([counter,counter2,recCountNonZeroDepth,invalidSOID,os.path.basename(dgp),ResultsFile + '.csv'])            
 
-            #return(True, [counter,counter2,recCountNonZeroDepth,invalidSOID]) #UKS Commented
-            return(True, message)#CBH added
+                    #recCountNonZeroDepth counter logged, concatenated to the message and reset
+                message = ''   
+                for grid in log:#CBH
+                    message += 'For depth-grid: ' + str(grid[4]) + '\n' + str(grid[0])+' records processed of ' + str(grid[0]) + ' records total.\n' + \
+                    'Total records with flooding: ' + str(grid[2]) + '\n' + \
+                    'Total number of records with unmatched Specific Occupancy IDs found: ' + \
+                    str(grid[3]) +'\n File saved to: ' + os.path.realpath(os.path.join(os.path.dirname(outputDir),str(grid[5]))) + '\n\n' #UKS - modified for complete file name #CBH - change added 8/28/19
+                            
+                    recCountNonZeroDepth = 0    
 
-            # Measuring the script performance
+                #return(True, [counter,counter2,recCountNonZeroDepth,invalidSOID]) #UKS Commented
+                return(True, message)#CBH added
         except Exception as e:
             logger.info(e)
             print(e)

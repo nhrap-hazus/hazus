@@ -1,5 +1,5 @@
 {% set name = "hazus" %}
-{% set version = "0.0.8" %}
+{% set version = "0.0.9" %}
 
 package:
   name: "{{ name|lower }}"
@@ -67,7 +67,7 @@ requirements:
     - rasterio
     - reportlab
     - requests
-    - Rtree
+    - rtree
     - scipy
     - seaborn
     - Shapely
