@@ -1,13 +1,12 @@
 {% set name = "hazus" %}
-{% set version = "0.0.10" %}
+{% set version = "0.0.11" %}
 
 package:
   name: "{{ name|lower }}"
   version: "{{ version }}"
 
 source:
-  url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: 0dd62f6007b6c3aaec689d5cd208d23e72b7abd7d8c64716b9cea5b279feccd8
+  path: '.'
 
 build:
   number: 0

@@ -121,8 +121,8 @@ def read_sql(comp_name, cnxn, inputs):
     hazus_results_dict['econ_loss'] = hazus_results_dict['econ_loss'] * 1000
     # Convert units to tons
     debris_cols = ['DebrisBW', 'DebrisCS']
-#     for debris_col in debris_cols:
-#         hazus_results_dict['impact'][debris_col] = hazus_results_dict['impact'][debris_col] * 1000
+    # for debris_col in debris_cols:
+    #     hazus_results_dict['impact'][debris_col] = hazus_results_dict['impact'][debris_col] * 1000
 
     # strip leading and trailing spaces on occupancy type
     hazus_results_dict['building_damage_occup']['Occupancy'] = hazus_results_dict['building_damage_occup']['Occupancy'].apply(lambda x: x.strip())
